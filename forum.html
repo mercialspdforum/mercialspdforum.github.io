@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSPD — Detective Bureau &amp; GIT Forum</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg: #06080f; --card: #0e1420; --border: rgba(255,255,255,0.08);
+            --blue: #3b82f6; --purple: #a78bfa; --orange: #f97316; --green: #10b981;
+            --red: #ef4444; --text: #f1f5f9; --muted: #94a3b8; --dim: #64748b;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+            min-height: 100vh; line-height: 1.5;
+        }
+        a { color: var(--blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .auth-wrap {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+            background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(167,139,250,0.15), transparent);
+        }
+        .auth-card {
+            width: 100%; max-width: 400px; background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px; text-align: center;
+        }
+        .auth-card h1 { font-size: 1.25rem; margin: 12px 0 4px; }
+        .auth-card .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+        .form-group { text-align: left; margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .form-control {
+            width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+            background: rgba(0,0,0,0.35); color: var(--text); font-family: inherit; font-size: 0.95rem;
+        }
+        .form-control:focus { outline: none; border-color: var(--purple); }
+        textarea.form-control { min-height: 120px; resize: vertical; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; font-family: inherit;
+            cursor: pointer; font-size: 0.9rem; transition: 0.15s;
+        }
+        .btn-primary { background: var(--purple); color: #fff; width: 100%; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--purple); color: var(--text); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-success { background: var(--green); color: #fff; }
+        .btn-orange { background: var(--orange); color: #fff; }
+        .err { color: var(--red); font-size: 0.85rem; margin-top: 10px; display: none; }
+
+        #app { display: none; min-height: 100vh; }
+        #app.show { display: flex; flex-direction: column; }
+
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--card);
+            position: sticky; top: 0; z-index: 50;
+        }
+        .topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+        .topbar .brand span { color: var(--purple); }
+        .topbar .user { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: var(--muted); }
+        .badge {
+            display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+            background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3);
+        }
+        .badge.git { background: rgba(249,115,22,0.15); color: var(--orange); border-color: rgba(249,115,22,0.35); }
+
+        .main { max-width: 960px; width: 100%; margin: 0 auto; padding: 24px 16px 48px; flex: 1; }
+
+        .breadcrumb { font-size: 0.85rem; color: var(--dim); margin-bottom: 18px; }
+        .breadcrumb a { color: var(--muted); }
+        .breadcrumb span { color: var(--text); }
+
+        .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .page-head h2 { font-size: 1.35rem; }
+        .page-head p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+        .cat-card, .topic-row, .post-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+            margin-bottom: 10px; transition: border-color 0.15s;
+        }
+        .cat-card { padding: 16px 18px; cursor: pointer; display: flex; gap: 14px; align-items: flex-start; }
+        .cat-card:hover { border-color: rgba(167,139,250,0.4); }
+        .cat-card .ico {
+            width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            background: rgba(167,139,250,0.12); color: var(--purple); flex-shrink: 0;
+        }
+        .cat-card.git .ico { background: rgba(249,115,22,0.12); color: var(--orange); }
+        .cat-card h3 { font-size: 1.05rem; margin-bottom: 4px; }
+        .cat-card p { font-size: 0.85rem; color: var(--muted); }
+        .cat-meta { margin-left: auto; text-align: right; font-size: 0.75rem; color: var(--dim); white-space: nowrap; }
+
+        .topic-row {
+            padding: 14px 16px; cursor: pointer; display: grid;
+            grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+        }
+        .topic-row:hover { border-color: rgba(59,130,246,0.4); }
+        .topic-row h4 { font-size: 0.95rem; font-weight: 600; }
+        .topic-row .meta { font-size: 0.75rem; color: var(--dim); margin-top: 4px; }
+        .topic-stats { text-align: right; font-size: 0.75rem; color: var(--muted); }
+
+        .post-card { padding: 0; overflow: hidden; }
+        .post-head {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            padding: 10px 16px; background: rgba(0,0,0,0.25); border-bottom: 1px solid var(--border);
+            font-size: 0.8rem; color: var(--muted);
+        }
+        .post-body { padding: 16px; font-size: 0.95rem; line-height: 1.65; word-break: break-word; }
+        .post-body img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+        .post-body blockquote {
+            border-left: 3px solid var(--purple); padding: 8px 12px; margin: 10px 0;
+            background: rgba(167,139,250,0.08); color: var(--muted); border-radius: 0 8px 8px 0;
+        }
+        .post-body b, .post-body strong { color: #fff; }
+        .post-body .bb-code {
+            font-family: ui-monospace, monospace; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 0.85em;
+        }
+
+        .bb-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .bb-toolbar button {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted);
+            padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: inherit;
+        }
+        .bb-toolbar button:hover { color: var(--text); border-color: var(--purple); }
+
+        .compose {
+            background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 16px; margin-top: 20px;
+        }
+        .compose h3 { font-size: 0.95rem; margin-bottom: 12px; }
+
+        .empty { text-align: center; padding: 40px 20px; color: var(--dim); }
+        .empty i { font-size: 2rem; margin-bottom: 10px; opacity: 0.5; }
+
+        .modal-bg {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100;
+            display: none; align-items: center; justify-content: center; padding: 16px;
+        }
+        .modal-bg.show { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            width: 100%; max-width: 520px; padding: 22px; max-height: 90vh; overflow-y: auto;
+        }
+        .modal h3 { margin-bottom: 16px; }
+        .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: var(--card); border: 1px solid var(--border);
+            padding: 12px 16px; border-radius: 10px; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .toast.show { display: block; animation: up 0.25s ease; }
+        @keyframes up { from { opacity: 0; transform: translateY(8px); } }
+
+        .denied {
+            max-width: 420px; margin: 80px auto; text-align: center; padding: 32px;
+            background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+        }
+        .denied i { font-size: 2.5rem; color: var(--red); margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrap" id="authScreen">
+    <div class="auth-card">
+        <i class="fa-solid fa-user-secret" style="font-size:2rem;color:var(--purple);"></i>
+        <h1>Detective Bureau &amp; GIT</h1>
+        <p class="sub">Sadece Detective I / II / Supervisor ve GIT</p>
+        <div class="form-group">
+            <label>IC İsim (Ad Soyad)</label>
+            <input type="text" id="loginName" class="form-control" placeholder="John Doe" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>Şifre</label>
+            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()"><i class="fa-solid fa-right-to-bracket"></i> Giriş</button>
+        <p class="err" id="loginErr"></p>
+        <p style="margin-top:16px;font-size:0.75rem;color:var(--dim);">MDC hesabınla giriş yap. Rütben yetkili değilse erişemezsin.</p>
+    </div>
+</div>
+
+<div id="app">
+    <header class="topbar">
+        <div class="brand" onclick="goHome()" style="cursor:pointer;">
+            <i class="fa-solid fa-user-secret" style="color:var(--purple);"></i>
+            <div>LSPD <span>Forum</span></div>
+        </div>
+        <div class="user">
+            <span id="topName">-</span>
+            <span class="badge" id="topRank">-</span>
+            <button class="btn btn-ghost btn-sm" onclick="logout()">Çıkış</button>
+        </div>
+    </header>
+    <div class="main" id="mainView"></div>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDdp_kKYK0wGDUGUgkO96-vGZs5F2Ot250",
+    authDomain: "mercia-pd.firebaseapp.com",
+    databaseURL: "https://mercia-pd-default-rtdb.firebaseio.com",
+    projectId: "mercia-pd",
+    storageBucket: "mercia-pd.firebasestorage.app",
+    messagingSenderId: "340875265258",
+    appId: "1:340875265258:web:8ebbff9c4275888ee9c393",
+    measurementId: "G-WLT3SZ2GFY"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/** Sadece bu rütbeler girebilir */
+const ALLOWED_RANKS = [
+    "Detective I",
+    "Detective II",
+    "Detective Supervisor",
+    "GIT",
+    "Gang Investigation Team"
+];
+
+const DEFAULT_CATEGORIES = [
+    { id: "fraksiyon", title: "Fraksiyon Raporları", desc: "Her yapılanma için konu açılır; soruşturma notları yanıt olarak birikir.", icon: "fa-people-group", git: false },
+    { id: "sahis", title: "Şahıs Takip", desc: "Takip edilen şahıslar — her kişi bir konu.", icon: "fa-user-tag", git: false },
+    { id: "cinayet", title: "Cinayet / Ağır Suç", desc: "Cinayet ve ağır dosyalar.", icon: "fa-skull", git: false },
+    { id: "fid", title: "FID / Kimlik Kartları", desc: "FID ve kimlik kayıt notları.", icon: "fa-id-card", git: false },
+    { id: "git", title: "GIT — Gang Investigation Team", desc: "Sadece GIT operasyonları ve çete soruşturmaları.", icon: "fa-user-ninja", git: true },
+    { id: "genel", title: "Genel / Koordinasyon", desc: "Büro içi duyuru ve koordinasyon.", icon: "fa-comments", git: false }
+];
+
+let currentUser = null;
+let currentUserId = null;
+let view = { page: "home" }; // home | category | topic
+let unsub = null;
+
+function esc(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/** Basit BBCode → HTML (güvenli: önce escape) */
+function bbcode(raw) {
+    let t = esc(raw || "");
+    t = t.replace(/\n/g, "<br>");
+    t = t.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<b>$1</b>");
+    t = t.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<i>$1</i>");
+    t = t.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>");
+    t = t.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>");
+    t = t.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<span class=\"bb-code\">$1</span>");
+    t = t.replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, "<blockquote>$1</blockquote>");
+    t = t.replace(/\[quote=([^\]]+)\]([\s\S]*?)\[\/quote\]/gi, "<blockquote><strong>$1</strong><br>$2</blockquote>");
+    t = t.replace(/\[url\](https?:\/\/[^\s\[]+)\[\/url\]/gi, "<a href=\"$1\" target=\"_blank\" rel=\"noopener\">$1</a>");
+    t = t.replace(/\[url=(https?:\/\/[^\]]+)\]([\s\S]*?)\[\/url\]/gi, "<a href=\"$1\" target=\"_blank\" rel=\"noopener\">$2</a>");
+    t = t.replace(/\[img\](https?:\/\/[^\s\[]+)\[\/img\]/gi, "<img src=\"$1\" alt=\"\">");
+    t = t.replace(/\[color=([a-zA-Z#0-9]+)\]([\s\S]*?)\[\/color\]/gi, "<span style=\"color:$1\">$2</span>");
+    t = t.replace(/\[center\]([\s\S]*?)\[\/center\]/gi, "<div style=\"text-align:center\">$1</div>");
+    t = t.replace(/\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi, "<details><summary style=\"cursor:pointer;color:var(--purple)\">Spoiler</summary>$1</details>");
+    return t;
+}
+
+function formatDate(ts) {
+    if (!ts) return "-";
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    if (isNaN(d)) return "-";
+    return d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
+}
+
+function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2500);
+}
+
+function isAllowedRank(rank) {
+    if (!rank) return false;
+    const r = rank.trim();
+    if (ALLOWED_RANKS.includes(r)) return true;
+    // esnek eşleşme
+    if (/^detective\s*(i|ii|1|2|supervisor)/i.test(r)) return true;
+    if (/git|gang\s*investigation/i.test(r)) return true;
+    return false;
+}
+
+function isGitMember() {
+    const r = (currentUser?.rank || "") + " " + (currentUser?.unit || "");
+    return /git|gang\s*investigation|detective supervisor/i.test(r) ||
+        ALLOWED_RANKS.slice(2).includes(currentUser?.rank);
+}
+
+function nameToEmail(name) {
+    // MDC ile aynı format: boşluk → _, sadece a-z 0-9 _
+    return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + "@lspd.local";
+}
+
+function doLogin() {
+    const name = document.getElementById("loginName").value.trim();
+    const pass = document.getElementById("loginPass").value;
+    const err = document.getElementById("loginErr");
+    err.style.display = "none";
+    if (!name || !pass) {
+        err.textContent = "İsim ve şifre gerekli.";
+        err.style.display = "block";
+        return;
+    }
+    auth.signInWithEmailAndPassword(nameToEmail(name), pass)
+        .catch(e => {
+            err.textContent = e.code === "auth/user-not-found" || e.code === "auth/wrong-password"
+                ? "Hatalı giriş." : e.message;
+            err.style.display = "block";
+        });
+}
+
+function logout() { auth.signOut(); }
+
+auth.onAuthStateChanged(async user => {
+    if (!user) {
+        document.getElementById("authScreen").style.display = "flex";
+        document.getElementById("app").classList.remove("show");
+        currentUser = null;
+        currentUserId = null;
+        return;
+    }
+    currentUserId = user.uid;
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists || snap.data().status !== "approved") {
+        document.getElementById("authScreen").style.display = "flex";
+        document.getElementById("app").classList.remove("show");
+        document.getElementById("loginErr").textContent = "Hesap onaylı değil.";
+        document.getElementById("loginErr").style.display = "block";
+        auth.signOut();
+        return;
+    }
+    currentUser = snap.data();
+    if (!isAllowedRank(currentUser.rank)) {
+        document.getElementById("authScreen").style.display = "none";
+        document.getElementById("app").classList.add("show");
+        document.getElementById("mainView").innerHTML = `
+            <div class="denied">
+                <i class="fa-solid fa-lock"></i>
+                <h2>Erişim Yok</h2>
+                <p style="color:var(--muted);margin:12px 0 20px;">Bu forum yalnızca <strong>Detective I / II / Supervisor</strong> ve <strong>GIT</strong> içindir.<br>Rütben: ${esc(currentUser.rank)}</p>
+                <button class="btn btn-ghost" onclick="logout()">Çıkış</button>
+            </div>`;
+        document.getElementById("topName").textContent = currentUser.name || "-";
+        document.getElementById("topRank").textContent = currentUser.rank || "-";
+        return;
+    }
+    document.getElementById("authScreen").style.display = "none";
+    document.getElementById("app").classList.add("show");
+    document.getElementById("topName").textContent = currentUser.name || "-";
+    const rankEl = document.getElementById("topRank");
+    rankEl.textContent = currentUser.rank || "-";
+    if (/git/i.test(currentUser.rank)) rankEl.classList.add("git");
+    await ensureCategories();
+    goHome();
+});
+
+async function ensureCategories() {
+    const col = db.collection("forumCategories");
+    for (const c of DEFAULT_CATEGORIES) {
+        const ref = col.doc(c.id);
+        const s = await ref.get();
+        if (!s.exists) {
+            await ref.set({
+                title: c.title,
+                desc: c.desc,
+                icon: c.icon,
+                gitOnly: !!c.git,
+                order: DEFAULT_CATEGORIES.indexOf(c),
+                topicCount: 0
+            });
+        }
+    }
+}
+
+function clearUnsub() {
+    if (unsub) { unsub(); unsub = null; }
+}
+
+function goHome() {
+    clearUnsub();
+    view = { page: "home" };
+    const main = document.getElementById("mainView");
+    main.innerHTML = `
+        <div class="page-head">
+            <div>
+                <h2>Detective Bureau &amp; GIT</h2>
+                <p>Kategori seç · konu aç · yanıt biriktir (BBCode destekli)</p>
+            </div>
+        </div>
+        <div id="catList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i><p>Yükleniyor…</p></div></div>
+        <p style="margin-top:24px;font-size:0.8rem;color:var(--dim);">
+            BBCode: [b] [i] [u] [quote] [url] [img] [code] [spoiler] [color=#hex]
+        </p>`;
+    unsub = db.collection("forumCategories").orderBy("order").onSnapshot(snap => {
+        const box = document.getElementById("catList");
+        if (!box) return;
+        let html = "";
+        snap.forEach(doc => {
+            const c = doc.data();
+            if (c.gitOnly && !isGitMember() && !/supervisor/i.test(currentUser.rank || "")) {
+                // GIT kategorisini sadece GIT / Supervisor görsün — istersen tüm detective görsün diye kaldır
+            }
+            html += `
+                <div class="cat-card ${c.gitOnly ? "git" : ""}" onclick="openCategory('${doc.id}')">
+                    <div class="ico"><i class="fa-solid ${esc(c.icon || "fa-folder")}"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <h3>${esc(c.title)}</h3>
+                        <p>${esc(c.desc || "")}</p>
+                    </div>
+                    <div class="cat-meta">${c.topicCount || 0} konu</div>
+                </div>`;
+        });
+        box.innerHTML = html || "<div class=\"empty\"><p>Kategori yok</p></div>";
+    });
+}
+
+function openCategory(catId) {
+    clearUnsub();
+    view = { page: "category", catId };
+    const main = document.getElementById("mainView");
+    main.innerHTML = `
+        <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / <span id="bcCat">…</span></div>
+        <div class="page-head">
+            <div>
+                <h2 id="catTitle">…</h2>
+                <p id="catDesc"></p>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="openNewTopicModal()"><i class="fa-solid fa-plus"></i> Yeni Konu</button>
+        </div>
+        <div id="topicList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>`;
+
+    db.collection("forumCategories").doc(catId).get().then(s => {
+        if (!s.exists) return goHome();
+        const c = s.data();
+        document.getElementById("bcCat").textContent = c.title;
+        document.getElementById("catTitle").textContent = c.title;
+        document.getElementById("catDesc").textContent = c.desc || "";
+        view.catTitle = c.title;
+    });
+
+    unsub = db.collection("forumTopics").where("categoryId", "==", catId)
+        .orderBy("lastPostAt", "desc")
+        .onSnapshot(snap => {
+            const box = document.getElementById("topicList");
+            if (!box) return;
+            if (snap.empty) {
+                box.innerHTML = "<div class=\"empty\"><i class=\"fa-solid fa-folder-open\"></i><p>Henüz konu yok. İlk konuyu sen aç.</p></div>";
+                return;
+            }
+            let html = "";
+            snap.forEach(doc => {
+                const t = doc.data();
+                html += `
+                    <div class="topic-row" onclick="openTopic('${doc.id}')">
+                        <div>
+                            <h4>${esc(t.title)}</h4>
+                            <div class="meta">Açan: ${esc(t.authorName)} · ${formatDate(t.createdAt)}</div>
+                        </div>
+                        <div class="topic-stats">
+                            <div>${t.replyCount || 0} yanıt</div>
+                            <div style="color:var(--dim)">${formatDate(t.lastPostAt)}</div>
+                        </div>
+                    </div>`;
+            });
+            box.innerHTML = html;
+        }, err => {
+            // index yoksa createdAt ile
+            console.warn(err);
+            unsub = db.collection("forumTopics").where("categoryId", "==", catId)
+                .onSnapshot(snap => {
+                    const box = document.getElementById("topicList");
+                    if (!box) return;
+                    const items = [];
+                    snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+                    items.sort((a, b) => (b.lastPostAt?.seconds || 0) - (a.lastPostAt?.seconds || 0));
+                    box.innerHTML = items.map(t => `
+                        <div class="topic-row" onclick="openTopic('${t.id}')">
+                            <div>
+                                <h4>${esc(t.title)}</h4>
+                                <div class="meta">Açan: ${esc(t.authorName)} · ${formatDate(t.createdAt)}</div>
+                            </div>
+                            <div class="topic-stats">${t.replyCount || 0} yanıt</div>
+                        </div>`).join("") || "<div class=\"empty\"><p>Konu yok</p></div>";
+                });
+        });
+}
+
+function openNewTopicModal() {
+    document.getElementById("modalBox").innerHTML = `
+        <h3>Yeni Konu</h3>
+        <div class="form-group">
+            <label>Başlık</label>
+            <input type="text" id="newTopicTitle" class="form-control" placeholder="Örn: Ballas — Soruşturma Dosyası">
+        </div>
+        <div class="form-group">
+            <label>İlk mesaj (BBCode)</label>
+            <div class="bb-toolbar" id="bb1"></div>
+            <textarea id="newTopicBody" class="form-control" rows="8" placeholder="[b]Özet[/b]&#10;&#10;Detaylar..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+            <button class="btn btn-success" onclick="createTopic()">Oluştur</button>
+        </div>`;
+    document.getElementById("modalBg").classList.add("show");
+    mountBbToolbar("bb1", "newTopicBody");
+}
+
+function closeModal() {
+    document.getElementById("modalBg").classList.remove("show");
+}
+
+function mountBbToolbar(toolbarId, textareaId) {
+    const bar = document.getElementById(toolbarId);
+    if (!bar) return;
+    const tags = [
+        ["B", "[b]", "[/b]"], ["I", "[i]", "[/i]"], ["U", "[u]", "[/u]"],
+        ["Quote", "[quote]", "[/quote]"], ["URL", "[url]", "[/url]"],
+        ["Img", "[img]", "[/img]"], ["Code", "[code]", "[/code]"], ["Spoiler", "[spoiler]", "[/spoiler]"]
+    ];
+    bar.innerHTML = tags.map(([label, open, close]) =>
+        `<button type="button" onclick="insertBb('${textareaId}','${open}','${close}')">${label}</button>`
+    ).join("");
+}
+
+function insertBb(textareaId, open, close) {
+    const ta = document.getElementById(textareaId);
+    if (!ta) return;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    ta.value = ta.value.substring(0, start) + open + sel + close + ta.value.substring(end);
+    ta.focus();
+    ta.selectionStart = start + open.length;
+    ta.selectionEnd = start + open.length + sel.length;
+}
+
+async function createTopic() {
+    const title = document.getElementById("newTopicTitle").value.trim();
+    const body = document.getElementById("newTopicBody").value.trim();
+    if (!title || !body) return alert("Başlık ve mesaj zorunlu.");
+    const catId = view.catId;
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    try {
+        const topicRef = await db.collection("forumTopics").add({
+            categoryId: catId,
+            title,
+            authorId: currentUserId,
+            authorName: currentUser.name + " (" + currentUser.rank + ")",
+            createdAt: now,
+            lastPostAt: now,
+            replyCount: 0
+        });
+        await db.collection("forumPosts").add({
+            topicId: topicRef.id,
+            authorId: currentUserId,
+            authorName: currentUser.name + " (" + currentUser.rank + ")",
+            body,
+            createdAt: now,
+            isOp: true
+        });
+        await db.collection("forumCategories").doc(catId).update({
+            topicCount: firebase.firestore.FieldValue.increment(1)
+        });
+        closeModal();
+        toast("Konu açıldı");
+        openTopic(topicRef.id);
+    } catch (e) {
+        alert("Hata: " + e.message);
+    }
+}
+
+function openTopic(topicId) {
+    clearUnsub();
+    view = { page: "topic", topicId, catId: view.catId, catTitle: view.catTitle };
+    const main = document.getElementById("mainView");
+    main.innerHTML = `
+        <div class="breadcrumb">
+            <a href="#" onclick="goHome();return false;">Forum</a> /
+            <a href="#" onclick="openCategory('${view.catId || ""}');return false;">${esc(view.catTitle || "Kategori")}</a> /
+            <span id="bcTopic">…</span>
+        </div>
+        <div class="page-head">
+            <div><h2 id="topicTitle">…</h2></div>
+        </div>
+        <div id="postList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>
+        <div class="compose">
+            <h3>Yanıt yaz (BBCode)</h3>
+            <div class="bb-toolbar" id="bbReply"></div>
+            <textarea id="replyBody" class="form-control" rows="5" placeholder="[b]Güncelleme[/b] — soruşturma notu..."></textarea>
+            <button class="btn btn-primary" style="width:auto;margin-top:12px;" onclick="submitReply()">
+                <i class="fa-solid fa-paper-plane"></i> Yanıtı Gönder
+            </button>
+        </div>`;
+    mountBbToolbar("bbReply", "replyBody");
+
+    db.collection("forumTopics").doc(topicId).get().then(s => {
+        if (!s.exists) return goHome();
+        const t = s.data();
+        view.catId = t.categoryId;
+        document.getElementById("topicTitle").textContent = t.title;
+        document.getElementById("bcTopic").textContent = t.title;
+        if (!view.catTitle) {
+            db.collection("forumCategories").doc(t.categoryId).get().then(c => {
+                if (c.exists) view.catTitle = c.data().title;
+            });
+        }
+    });
+
+    unsub = db.collection("forumPosts").where("topicId", "==", topicId)
+        .orderBy("createdAt", "asc")
+        .onSnapshot(snap => {
+            const box = document.getElementById("postList");
+            if (!box) return;
+            let html = "";
+            let i = 0;
+            snap.forEach(doc => {
+                i++;
+                const p = doc.data();
+                html += `
+                    <div class="post-card">
+                        <div class="post-head">
+                            <span><strong style="color:var(--text)">${esc(p.authorName)}</strong>${p.isOp ? ' · <span style="color:var(--purple)">KONU</span>' : ""}</span>
+                            <span>#${i} · ${formatDate(p.createdAt)}</span>
+                        </div>
+                        <div class="post-body">${bbcode(p.body)}</div>
+                    </div>`;
+            });
+            box.innerHTML = html || "<div class=\"empty\"><p>Mesaj yok</p></div>";
+        }, err => {
+            console.warn(err);
+            db.collection("forumPosts").where("topicId", "==", topicId).onSnapshot(snap => {
+                const box = document.getElementById("postList");
+                if (!box) return;
+                const items = [];
+                snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+                items.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                box.innerHTML = items.map((p, idx) => `
+                    <div class="post-card">
+                        <div class="post-head">
+                            <span><strong style="color:var(--text)">${esc(p.authorName)}</strong></span>
+                            <span>#${idx + 1} · ${formatDate(p.createdAt)}</span>
+                        </div>
+                        <div class="post-body">${bbcode(p.body)}</div>
+                    </div>`).join("");
+            });
+        });
+}
+
+async function submitReply() {
+    const body = document.getElementById("replyBody").value.trim();
+    if (!body) return alert("Mesaj boş olamaz.");
+    const topicId = view.topicId;
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    try {
+        await db.collection("forumPosts").add({
+            topicId,
+            authorId: currentUserId,
+            authorName: currentUser.name + " (" + currentUser.rank + ")",
+            body,
+            createdAt: now,
+            isOp: false
+        });
+        await db.collection("forumTopics").doc(topicId).update({
+            lastPostAt: now,
+            replyCount: firebase.firestore.FieldValue.increment(1)
+        });
+        document.getElementById("replyBody").value = "";
+        toast("Yanıt eklendi");
+    } catch (e) {
+        alert("Hata: " + e.message);
+    }
+}
+</script>
+</body>
+</html>
