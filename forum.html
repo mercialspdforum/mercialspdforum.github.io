@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSPD — Detective Bureau &amp; GIT Forum</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <style>
+        :root, [data-theme="dark"] {
+            --bg: #06080f; --card: #0e1420; --border: rgba(255,255,255,0.08);
+            --blue: #3b82f6; --purple: #a78bfa; --orange: #f97316; --green: #10b981;
+            --red: #ef4444; --text: #f1f5f9; --muted: #94a3b8; --dim: #64748b;
+            --radius: 12px; --input-bg: rgba(0,0,0,0.35);
+        }
+        [data-theme="light"] {
+            --bg: #f0f4f8; --card: #fff; --border: rgba(15,23,42,0.1);
+            --text: #0f172a; --muted: #475569; --dim: #94a3b8; --input-bg: #f1f5f9;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+            min-height: 100vh; line-height: 1.5; transition: background .25s, color .25s;
+        }
+        a { color: var(--blue); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .auth-wrap {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+            background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(167,139,250,0.15), transparent);
+        }
+        .auth-card {
+            width: 100%; max-width: 400px; background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px; text-align: center;
+        }
+        .auth-card h1 { font-size: 1.25rem; margin: 12px 0 4px; }
+        .auth-card .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+        .form-group { text-align: left; margin-bottom: 14px; }
+        .form-group label {
+            display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted);
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .form-control {
+            width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--input-bg); color: var(--text); font-family: inherit; font-size: 0.95rem;
+        }
+        .form-control:focus { outline: none; border-color: var(--purple); }
+        textarea.form-control { min-height: 100px; resize: vertical; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 10px 14px; border-radius: 8px; border: none; font-weight: 600; font-family: inherit;
+            cursor: pointer; font-size: 0.85rem; transition: 0.15s;
+        }
+        .btn-primary { background: var(--purple); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--purple); color: var(--text); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-success { background: var(--green); color: #fff; }
+        .btn-warn { background: #f59e0b; color: #111; }
+        .err { color: var(--red); font-size: 0.85rem; margin-top: 10px; display: none; }
+
+        #app { display: none; min-height: 100vh; flex-direction: column; }
+        #app.show { display: flex; }
+
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--card);
+            position: sticky; top: 0; z-index: 50; flex-wrap: wrap;
+        }
+        .topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; cursor: pointer; }
+        .topbar .brand span { color: var(--purple); }
+        .topbar .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+        .badge {
+            display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+            background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3);
+        }
+        .badge.git { background: rgba(249,115,22,0.15); color: var(--orange); border-color: rgba(249,115,22,0.35); }
+        .badge.tag { background: rgba(59,130,246,0.12); color: var(--blue); border-color: rgba(59,130,246,0.3); margin: 2px; }
+        .badge.locked { background: rgba(239,68,68,0.12); color: var(--red); }
+        .badge.pinned { background: rgba(245,158,11,0.15); color: #f59e0b; }
+
+        .main { max-width: 960px; width: 100%; margin: 0 auto; padding: 20px 14px 48px; flex: 1; }
+        .breadcrumb { font-size: 0.8rem; color: var(--dim); margin-bottom: 14px; }
+        .breadcrumb a { color: var(--muted); }
+        .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .page-head h2 { font-size: 1.25rem; }
+        .page-head p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+        .search-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-row input { flex: 1; min-width: 160px; }
+
+        .cat-card, .topic-row, .post-card, .panel {
+            background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px;
+        }
+        .cat-card {
+            padding: 14px 16px; cursor: pointer; display: flex; gap: 12px; align-items: flex-start;
+        }
+        .cat-card:hover { border-color: rgba(167,139,250,0.4); }
+        .cat-card .ico {
+            width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            background: rgba(167,139,250,0.12); color: var(--purple); flex-shrink: 0;
+        }
+        .cat-card.git .ico { background: rgba(249,115,22,0.12); color: var(--orange); }
+        .cat-card h3 { font-size: 1rem; margin-bottom: 2px; }
+        .cat-card p { font-size: 0.8rem; color: var(--muted); }
+        .cat-meta { margin-left: auto; text-align: right; font-size: 0.75rem; color: var(--dim); }
+
+        .topic-row {
+            padding: 12px 14px; cursor: pointer; display: grid;
+            grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+        }
+        .topic-row:hover { border-color: rgba(59,130,246,0.4); }
+        .topic-row h4 { font-size: 0.92rem; font-weight: 600; }
+        .topic-row .meta { font-size: 0.72rem; color: var(--dim); margin-top: 4px; }
+        .topic-stats { text-align: right; font-size: 0.72rem; color: var(--muted); }
+
+        .post-card { overflow: hidden; }
+        .post-head {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 8px 14px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border);
+            font-size: 0.78rem; color: var(--muted);
+        }
+        .post-body { padding: 14px; font-size: 0.92rem; line-height: 1.65; word-break: break-word; }
+        .post-body img { max-width: 100%; border-radius: 8px; margin: 8px 0; cursor: pointer; }
+        .post-body blockquote {
+            border-left: 3px solid var(--purple); padding: 8px 12px; margin: 10px 0;
+            background: rgba(167,139,250,0.08); color: var(--muted); border-radius: 0 8px 8px 0;
+        }
+        .post-actions { padding: 0 14px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .bb-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+        .bb-toolbar button {
+            background: rgba(128,128,128,0.08); border: 1px solid var(--border); color: var(--muted);
+            padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.72rem; font-family: inherit;
+        }
+        .bb-toolbar button:hover { color: var(--text); border-color: var(--purple); }
+        .preview-box {
+            border: 1px dashed var(--border); border-radius: 8px; padding: 12px; margin-top: 8px;
+            font-size: 0.9rem; min-height: 40px; background: rgba(0,0,0,0.15);
+        }
+
+        .compose { padding: 14px; margin-top: 16px; }
+        .compose h3 { font-size: 0.9rem; margin-bottom: 10px; }
+        .empty { text-align: center; padding: 36px 16px; color: var(--dim); }
+        .empty i { font-size: 1.8rem; margin-bottom: 8px; opacity: 0.5; display: block; }
+
+        .modal-bg {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100;
+            display: none; align-items: center; justify-content: center; padding: 16px;
+        }
+        .modal-bg.show { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            width: 100%; max-width: 540px; padding: 20px; max-height: 90vh; overflow-y: auto;
+        }
+        .modal h3 { margin-bottom: 14px; }
+        .modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .toast {
+            position: fixed; bottom: 16px; right: 16px; background: var(--card); border: 1px solid var(--border);
+            padding: 12px 14px; border-radius: 10px; z-index: 200; display: none; max-width: 280px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .toast.show { display: block; }
+
+        .denied {
+            max-width: 420px; margin: 80px auto; text-align: center; padding: 32px;
+            background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+        }
+        .denied i { font-size: 2.2rem; color: var(--red); margin-bottom: 10px; }
+
+        .notif-wrap { position: relative; }
+        .notif-btn {
+            background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+            width: 36px; height: 36px; border-radius: 8px; cursor: pointer; position: relative;
+        }
+        .notif-btn .dot {
+            position: absolute; top: -3px; right: -3px; background: var(--red); color: #fff;
+            font-size: 0.6rem; min-width: 16px; height: 16px; border-radius: 8px;
+            display: none; align-items: center; justify-content: center; font-weight: 700;
+        }
+        .notif-panel {
+            display: none; position: absolute; right: 0; top: 42px; width: 300px; max-height: 360px;
+            overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4); z-index: 80;
+        }
+        .notif-panel.show { display: block; }
+        .notif-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.8rem; cursor: pointer; }
+        .notif-item:hover { background: rgba(167,139,250,0.08); }
+        .notif-item.unread { border-left: 3px solid var(--purple); }
+
+        .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+        .tabs button {
+            padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent;
+            color: var(--muted); cursor: pointer; font-size: 0.8rem; font-family: inherit;
+        }
+        .tabs button.active { background: rgba(167,139,250,0.15); color: var(--purple); border-color: rgba(167,139,250,0.35); }
+
+        .activity-item {
+            padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.82rem;
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .pag { display: flex; gap: 6px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+        .pag button {
+            min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+            background: transparent; color: var(--muted); cursor: pointer;
+        }
+        .pag button.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 8px; padding: 12px; text-align: center;
+            cursor: pointer; margin: 8px 0; font-size: 0.8rem; color: var(--muted);
+        }
+        .upload-zone:hover { border-color: var(--purple); }
+        .upload-zone input { display: none; }
+
+        .member-row {
+            display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;
+            border-bottom: 1px solid var(--border); font-size: 0.85rem;
+        }
+        .log-row { padding: 8px 12px; font-size: 0.78rem; border-bottom: 1px solid var(--border); color: var(--muted); }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrap" id="authScreen">
+    <div class="auth-card">
+        <i class="fa-solid fa-user-secret" style="font-size:2rem;color:var(--purple);"></i>
+        <h1>Detective Bureau &amp; GIT</h1>
+        <p class="sub">Sadece Detective I / II / Supervisor ve GIT</p>
+        <div class="form-group">
+            <label>IC İsim (Ad Soyad)</label>
+            <input type="text" id="loginName" class="form-control" placeholder="John Doe" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>Şifre</label>
+            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">
+            <i class="fa-solid fa-right-to-bracket"></i> Giriş
+        </button>
+        <p class="err" id="loginErr"></p>
+    </div>
+</div>
+
+<div id="app">
+    <header class="topbar">
+        <div class="brand" onclick="goHome()">
+            <i class="fa-solid fa-user-secret" style="color:var(--purple);"></i>
+            <div>LSPD <span>Forum</span></div>
+        </div>
+        <div class="right">
+            <div class="notif-wrap">
+                <button class="notif-btn" onclick="toggleNotif(event)" title="Bildirimler">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="dot" id="notifDot">0</span>
+                </button>
+                <div class="notif-panel" id="notifPanel" onclick="event.stopPropagation()">
+                    <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
+                        <strong style="font-size:0.85rem;">Bildirimler</strong>
+                        <button class="btn btn-ghost btn-sm" onclick="markAllNotifs()">Okundu</button>
+                    </div>
+                    <div id="notifList"><div class="empty" style="padding:20px;">Bildirim yok</div></div>
+                </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeBtn"><i class="fa-solid fa-moon"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="goMembers()"><i class="fa-solid fa-users"></i></button>
+            <button class="btn btn-ghost btn-sm" id="adminBtn" style="display:none;" onclick="goAdmin()"><i class="fa-solid fa-gear"></i></button>
+            <span id="topName">-</span>
+            <span class="badge" id="topRank">-</span>
+            <button class="btn btn-ghost btn-sm" onclick="logout()">Çıkış</button>
+        </div>
+    </header>
+    <div class="main" id="mainView"></div>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDdp_kKYK0wGDUGUgkO96-vGZs5F2Ot250",
+    authDomain: "mercia-pd.firebaseapp.com",
+    databaseURL: "https://mercia-pd-default-rtdb.firebaseio.com",
+    projectId: "mercia-pd",
+    storageBucket: "mercia-pd.firebasestorage.app",
+    messagingSenderId: "340875265258",
+    appId: "1:340875265258:web:8ebbff9c4275888ee9c393",
+    measurementId: "G-WLT3SZ2GFY"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+const ALLOWED_RANKS = ["Detective I", "Detective II", "Detective Supervisor", "GIT", "Gang Investigation Team"];
+const DEFAULT_CATEGORIES = [
+    { id: "fraksiyon", title: "Fraksiyon Raporları", desc: "Her yapılanma için konu; yanıtlar alt alta.", icon: "fa-people-group", git: false },
+    { id: "sahis", title: "Şahıs Takip", desc: "Her şahıs bir konu.", icon: "fa-user-tag", git: false },
+    { id: "cinayet", title: "Cinayet / Ağır Suç", desc: "Ağır dosyalar.", icon: "fa-skull", git: false },
+    { id: "fid", title: "FID / Kimlik", desc: "FID notları.", icon: "fa-id-card", git: false },
+    { id: "git", title: "GIT — Gang Investigation", desc: "GIT operasyonları.", icon: "fa-user-ninja", git: true },
+    { id: "genel", title: "Genel / Koordinasyon", desc: "Büro duyuruları.", icon: "fa-comments", git: false }
+];
+const TAGS = ["aktif", "kapalı", "acil", "gizli", "bekliyor"];
+const POST_PAGE = 15;
+
+let currentUser = null, currentUserId = null, view = { page: "home" }, unsub = null;
+let allNotifs = [], postPage = 1, allPostsCache = [];
+
+function esc(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function bbcode(raw) {
+    let t = esc(raw || "");
+    t = t.replace(/\n/g, "<br>");
+    t = t.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<b>$1</b>");
+    t = t.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<i>$1</i>");
+    t = t.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>");
+    t = t.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>");
+    t = t.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<code style=\"background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px\">$1</code>");
+    t = t.replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, "<blockquote>$1</blockquote>");
+    t = t.replace(/\[quote=([^\]]+)\]([\s\S]*?)\[\/quote\]/gi, "<blockquote><strong>$1</strong><br>$2</blockquote>");
+    t = t.replace(/\[url\](https?:\/\/[^\s\[]+)\[\/url\]/gi, "<a href=\"$1\" target=\"_blank\" rel=\"noopener\">$1</a>");
+    t = t.replace(/\[url=(https?:\/\/[^\]]+)\]([\s\S]*?)\[\/url\]/gi, "<a href=\"$1\" target=\"_blank\" rel=\"noopener\">$2</a>");
+    t = t.replace(/\[img\](https?:\/\/[^\s\[]+)\[\/img\]/gi, "<img src=\"$1\" alt=\"\" onclick=\"window.open(this.src)\">");
+    t = t.replace(/\[color=([a-zA-Z#0-9]+)\]([\s\S]*?)\[\/color\]/gi, "<span style=\"color:$1\">$2</span>");
+    t = t.replace(/\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi, "<details><summary style=\"cursor:pointer;color:var(--purple)\">Spoiler</summary>$1</details>");
+    return t;
+}
+function formatDate(ts) {
+    if (!ts) return "-";
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return isNaN(d) ? "-" : d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
+}
+function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2500);
+}
+function isAllowedRank(rank) {
+    if (!rank) return false;
+    const r = rank.trim();
+    if (ALLOWED_RANKS.includes(r)) return true;
+    if (/^detective\s*(i|ii|1|2|supervisor)/i.test(r)) return true;
+    if (/git|gang\s*investigation/i.test(r)) return true;
+    return false;
+}
+function isSupervisor() {
+    const r = currentUser?.rank || "";
+    return /supervisor|lieutenant/i.test(r) || currentUser?.isAdmin;
+}
+function isGitMember() {
+    const r = (currentUser?.rank || "") + " " + (currentUser?.unit || "");
+    return /git|gang\s*investigation|supervisor/i.test(r);
+}
+function nameToEmail(name) {
+    return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + "@lspd.local";
+}
+function clearUnsub() { if (unsub) { unsub(); unsub = null; } }
+
+function initTheme() {
+    const t = localStorage.getItem("forum_theme") || "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    updateThemeBtn(t);
+}
+function toggleTheme() {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("forum_theme", next);
+    updateThemeBtn(next);
+}
+function updateThemeBtn(t) {
+    const b = document.getElementById("themeBtn");
+    if (b) b.innerHTML = t === "dark" ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>';
+}
+initTheme();
+
+function doLogin() {
+    const name = document.getElementById("loginName").value.trim();
+    const pass = document.getElementById("loginPass").value;
+    const err = document.getElementById("loginErr");
+    err.style.display = "none";
+    if (!name || !pass) { err.textContent = "İsim ve şifre gerekli."; err.style.display = "block"; return; }
+    auth.signInWithEmailAndPassword(nameToEmail(name), pass).catch(e => {
+        err.textContent = (e.code || "").includes("credential") || e.code === "auth/user-not-found" || e.code === "auth/wrong-password"
+            ? "Hatalı giriş (MDC ile aynı isim/şifre)." : e.message;
+        err.style.display = "block";
+    });
+}
+function logout() { auth.signOut(); }
+
+auth.onAuthStateChanged(async user => {
+    if (!user) {
+        document.getElementById("authScreen").style.display = "flex";
+        document.getElementById("app").classList.remove("show");
+        currentUser = null; currentUserId = null;
+        return;
+    }
+    currentUserId = user.uid;
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists || snap.data().status !== "approved") {
+        document.getElementById("loginErr").textContent = "Hesap onaylı değil.";
+        document.getElementById("loginErr").style.display = "block";
+        auth.signOut();
+        return;
+    }
+    currentUser = snap.data();
+    document.getElementById("authScreen").style.display = "none";
+    document.getElementById("app").classList.add("show");
+    document.getElementById("topName").textContent = currentUser.name || "-";
+    const rankEl = document.getElementById("topRank");
+    rankEl.textContent = currentUser.rank || "-";
+    if (/git/i.test(currentUser.rank || "")) rankEl.classList.add("git");
+    if (!isAllowedRank(currentUser.rank)) {
+        document.getElementById("mainView").innerHTML = `
+            <div class="denied"><i class="fa-solid fa-lock"></i><h2>Erişim Yok</h2>
+            <p style="color:var(--muted);margin:12px 0;">Sadece Detective I/II/Supervisor ve GIT.<br>Rütben: ${esc(currentUser.rank)}</p>
+            <button class="btn btn-ghost" onclick="logout()">Çıkış</button></div>`;
+        return;
+    }
+    if (isSupervisor()) document.getElementById("adminBtn").style.display = "inline-flex";
+    await ensureCategories();
+    loadNotifications();
+    goHome();
+});
+
+async function ensureCategories() {
+    for (const c of DEFAULT_CATEGORIES) {
+        const ref = db.collection("forumCategories").doc(c.id);
+        if (!(await ref.get()).exists) {
+            await ref.set({ title: c.title, desc: c.desc, icon: c.icon, gitOnly: !!c.git, order: DEFAULT_CATEGORIES.indexOf(c), topicCount: 0 });
+        }
+    }
+}
+
+async function audit(action, detail) {
+    try {
+        await db.collection("forumAudit").add({
+            action, detail: detail || "",
+            by: currentUser.name + " (" + currentUser.rank + ")",
+            byId: currentUserId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (e) { console.warn("audit", e); }
+}
+
+/* —— BİLDİRİM —— */
+function loadNotifications() {
+    db.collection("notifications").where("userId", "==", currentUserId).limit(40)
+        .onSnapshot(snap => {
+            allNotifs = [];
+            snap.forEach(d => allNotifs.push({ id: d.id, ...d.data() }));
+            allNotifs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            renderNotifs();
+        }, () => {});
+}
+function renderNotifs() {
+    const unread = allNotifs.filter(n => !n.read).length;
+    const dot = document.getElementById("notifDot");
+    if (dot) {
+        dot.style.display = unread ? "flex" : "none";
+        dot.textContent = unread > 9 ? "9+" : unread;
+    }
+    const list = document.getElementById("notifList");
+    if (!list) return;
+    if (!allNotifs.length) { list.innerHTML = '<div class="empty" style="padding:20px;">Bildirim yok</div>'; return; }
+    list.innerHTML = allNotifs.map(n => `
+        <div class="notif-item ${n.read ? "" : "unread"}" onclick="openNotif('${n.id}','${esc(n.topicId || "")}')">
+            <div>${esc(n.message || n.title || "Bildirim")}</div>
+            <div style="font-size:0.7rem;color:var(--dim);margin-top:4px;">${formatDate(n.createdAt)}</div>
+        </div>`).join("");
+}
+function toggleNotif(e) {
+    e.stopPropagation();
+    document.getElementById("notifPanel").classList.toggle("show");
+}
+document.addEventListener("click", () => {
+    const p = document.getElementById("notifPanel");
+    if (p) p.classList.remove("show");
+});
+function openNotif(id, topicId) {
+    db.collection("notifications").doc(id).update({ read: true }).catch(() => {});
+    if (topicId) openTopic(topicId);
+}
+function markAllNotifs() {
+    allNotifs.filter(n => !n.read).forEach(n => db.collection("notifications").doc(n.id).update({ read: true }));
+}
+function pushNotif(userId, message, topicId) {
+    if (!userId || userId === currentUserId) return;
+    db.collection("notifications").add({
+        userId, message, topicId: topicId || "", title: "Forum",
+        read: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+/* —— BB TOOLBAR —— */
+function mountBb(toolbarId, taId) {
+    const bar = document.getElementById(toolbarId);
+    if (!bar) return;
+    const tags = [
+        ["B","[b]","[/b]"],["I","[i]","[/i]"],["U","[u]","[/u]"],
+        ["Quote","[quote]","[/quote]"],["URL","[url]","[/url]"],
+        ["Img","[img]","[/img]"],["Code","[code]","[/code]"],["Spoiler","[spoiler]","[/spoiler]"]
+    ];
+    bar.innerHTML = tags.map(([l,o,c]) =>
+        `<button type="button" onclick="insertBb('${taId}','${o}','${c}')">${l}</button>`
+    ).join("") + `<button type="button" onclick="togglePreview('${taId}')">Önizle</button>`;
+}
+function insertBb(id, open, close) {
+    const ta = document.getElementById(id);
+    if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    const sel = ta.value.substring(s, e);
+    ta.value = ta.value.substring(0, s) + open + sel + close + ta.value.substring(e);
+    ta.focus();
+}
+function togglePreview(taId) {
+    let prev = document.getElementById(taId + "_prev");
+    if (prev) { prev.remove(); return; }
+    const ta = document.getElementById(taId);
+    prev = document.createElement("div");
+    prev.id = taId + "_prev";
+    prev.className = "preview-box";
+    prev.innerHTML = bbcode(ta.value) || "<span style='color:var(--dim)'>Boş</span>";
+    ta.parentNode.insertBefore(prev, ta.nextSibling);
+}
+
+/* —— HOME —— */
+function goHome() {
+    clearUnsub();
+    view = { page: "home" };
+    document.getElementById("mainView").innerHTML = `
+        <div class="page-head">
+            <div><h2>Detective Bureau &amp; GIT</h2><p>Kategori · konu · yanıt · BBCode</p></div>
+        </div>
+        <div class="search-row">
+            <input type="text" id="globalSearch" class="form-control" placeholder="Konu ara..." onkeydown="if(event.key==='Enter')doSearch()">
+            <button class="btn btn-primary btn-sm" onclick="doSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+        <div id="catList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>
+        <div class="panel" style="margin-top:20px;padding:0;">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.9rem;">Son aktivite</div>
+            <div id="recentAct"><div class="empty" style="padding:16px;">Yükleniyor…</div></div>
+        </div>`;
+    unsub = db.collection("forumCategories").orderBy("order").onSnapshot(snap => {
+        const box = document.getElementById("catList");
+        if (!box) return;
+        let html = "";
+        snap.forEach(doc => {
+            const c = doc.data();
+            html += `<div class="cat-card ${c.gitOnly ? "git" : ""}" onclick="openCategory('${doc.id}')">
+                <div class="ico"><i class="fa-solid ${esc(c.icon || "fa-folder")}"></i></div>
+                <div style="flex:1;min-width:0;"><h3>${esc(c.title)}</h3><p>${esc(c.desc || "")}</p></div>
+                <div class="cat-meta">${c.topicCount || 0} konu</div>
+            </div>`;
+        });
+        box.innerHTML = html || '<div class="empty">Kategori yok</div>';
+    });
+    loadRecentActivity();
+}
+
+function loadRecentActivity() {
+    db.collection("forumTopics").orderBy("lastPostAt", "desc").limit(10).onSnapshot(snap => {
+        const box = document.getElementById("recentAct");
+        if (!box) return;
+        if (snap.empty) { box.innerHTML = '<div class="empty" style="padding:16px;">Henüz aktivite yok</div>'; return; }
+        let html = "";
+        snap.forEach(d => {
+            const t = d.data();
+            html += `<div class="activity-item" style="cursor:pointer;" onclick="openTopic('${d.id}')">
+                <strong>${esc(t.title)}</strong>
+                <div style="color:var(--dim);font-size:0.72rem;margin-top:2px;">${esc(t.authorName)} · ${formatDate(t.lastPostAt)} · ${t.replyCount || 0} yanıt</div>
+            </div>`;
+        });
+        box.innerHTML = html;
+    }, () => {
+        db.collection("forumTopics").limit(10).get().then(snap => {
+            const box = document.getElementById("recentAct");
+            if (!box) return;
+            const items = [];
+            snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+            items.sort((a, b) => (b.lastPostAt?.seconds || 0) - (a.lastPostAt?.seconds || 0));
+            box.innerHTML = items.slice(0, 10).map(t =>
+                `<div class="activity-item" style="cursor:pointer;" onclick="openTopic('${t.id}')"><strong>${esc(t.title)}</strong></div>`
+            ).join("") || '<div class="empty">Yok</div>';
+        });
+    });
+}
+
+function doSearch() {
+    const q = (document.getElementById("globalSearch")?.value || "").toLowerCase().trim();
+    if (!q) return;
+    document.getElementById("mainView").innerHTML = `
+        <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / Arama</div>
+        <div class="page-head"><div><h2>Arama: ${esc(q)}</h2></div></div>
+        <div id="searchRes"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>`;
+    db.collection("forumTopics").get().then(snap => {
+        const hits = [];
+        snap.forEach(d => {
+            const t = d.data();
+            const hay = ((t.title || "") + " " + (t.tags || []).join(" ") + " " + (t.authorName || "")).toLowerCase();
+            if (hay.includes(q)) hits.push({ id: d.id, ...t });
+        });
+        const box = document.getElementById("searchRes");
+        if (!hits.length) { box.innerHTML = '<div class="empty">Sonuç yok</div>'; return; }
+        box.innerHTML = hits.map(t => `
+            <div class="topic-row" onclick="openTopic('${t.id}')">
+                <div><h4>${esc(t.title)}</h4><div class="meta">${esc(t.authorName)} · ${formatDate(t.createdAt)}</div></div>
+                <div class="topic-stats">${t.replyCount || 0} yanıt</div>
+            </div>`).join("");
+    });
+}
+
+/* —— CATEGORY —— */
+function openCategory(catId) {
+    clearUnsub();
+    view = { page: "category", catId };
+    document.getElementById("mainView").innerHTML = `
+        <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / <span id="bcCat">…</span></div>
+        <div class="page-head">
+            <div><h2 id="catTitle">…</h2><p id="catDesc"></p></div>
+            <button class="btn btn-success btn-sm" onclick="openNewTopicModal()"><i class="fa-solid fa-plus"></i> Yeni Konu</button>
+        </div>
+        <div class="search-row">
+            <input type="text" id="catSearch" class="form-control" placeholder="Bu kategoride filtrele..." oninput="filterTopics()">
+        </div>
+        <div id="topicList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>`;
+    db.collection("forumCategories").doc(catId).get().then(s => {
+        if (!s.exists) return goHome();
+        const c = s.data();
+        document.getElementById("bcCat").textContent = c.title;
+        document.getElementById("catTitle").textContent = c.title;
+        document.getElementById("catDesc").textContent = c.desc || "";
+        view.catTitle = c.title;
+    });
+    view.topicCache = [];
+    unsub = db.collection("forumTopics").where("categoryId", "==", catId).onSnapshot(snap => {
+        view.topicCache = [];
+        snap.forEach(d => view.topicCache.push({ id: d.id, ...d.data() }));
+        view.topicCache.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return (b.lastPostAt?.seconds || 0) - (a.lastPostAt?.seconds || 0);
+        });
+        filterTopics();
+    });
+}
+function filterTopics() {
+    const q = (document.getElementById("catSearch")?.value || "").toLowerCase();
+    const box = document.getElementById("topicList");
+    if (!box) return;
+    let list = view.topicCache || [];
+    if (q) list = list.filter(t => ((t.title || "") + (t.tags || []).join(" ")).toLowerCase().includes(q));
+    if (!list.length) { box.innerHTML = '<div class="empty"><i class="fa-solid fa-folder-open"></i><p>Konu yok</p></div>'; return; }
+    box.innerHTML = list.map(t => `
+        <div class="topic-row" onclick="openTopic('${t.id}')">
+            <div>
+                <h4>
+                    ${t.pinned ? '<span class="badge pinned">PIN</span> ' : ""}
+                    ${t.locked ? '<span class="badge locked">KİLİT</span> ' : ""}
+                    ${esc(t.title)}
+                </h4>
+                <div class="meta">
+                    ${esc(t.authorName)} · ${formatDate(t.createdAt)}
+                    ${(t.tags || []).map(tag => `<span class="badge tag">${esc(tag)}</span>`).join("")}
+                </div>
+            </div>
+            <div class="topic-stats"><div>${t.replyCount || 0} yanıt</div><div style="color:var(--dim)">${formatDate(t.lastPostAt)}</div></div>
+        </div>`).join("");
+}
+
+function openNewTopicModal() {
+    document.getElementById("modalBox").innerHTML = `
+        <h3>Yeni Konu</h3>
+        <div class="form-group"><label>Başlık</label>
+            <input type="text" id="newTopicTitle" class="form-control" placeholder="Örn: Ballas — Dosya"></div>
+        <div class="form-group"><label>Etiketler</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">${TAGS.map(t =>
+                `<label style="font-size:0.8rem;"><input type="checkbox" class="topic-tag" value="${t}"> ${t}</label>`
+            ).join("")}</div></div>
+        <div class="form-group"><label>İlk mesaj (BBCode)</label>
+            <div class="bb-toolbar" id="bb1"></div>
+            <textarea id="newTopicBody" class="form-control" rows="7"></textarea>
+            <div class="upload-zone" onclick="document.getElementById('topicFile').click()">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Foto yükle
+                <input type="file" id="topicFile" accept="image/*" onchange="uploadToField(this,'newTopicBody')">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+            <button class="btn btn-success" onclick="createTopic()">Oluştur</button>
+        </div>`;
+    document.getElementById("modalBg").classList.add("show");
+    mountBb("bb1", "newTopicBody");
+}
+function closeModal() { document.getElementById("modalBg").classList.remove("show"); }
+
+async function uploadToField(input, taId) {
+    if (!input.files?.[0]) return;
+    const file = input.files[0];
+    toast("Yükleniyor…");
+    try {
+        const path = "forum/" + currentUserId + "/" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+        await storage.ref().child(path).put(file);
+        const url = await storage.ref().child(path).getDownloadURL();
+        const ta = document.getElementById(taId);
+        ta.value += (ta.value ? "\n" : "") + "[img]" + url + "[/img]";
+        toast("Foto eklendi");
+    } catch (e) {
+        alert("Yükleme hatası: " + e.message + "\n(Storage kurallarını aç)");
+    }
+    input.value = "";
+}
+
+async function createTopic() {
+    const title = document.getElementById("newTopicTitle").value.trim();
+    const body = document.getElementById("newTopicBody").value.trim();
+    const tags = Array.from(document.querySelectorAll(".topic-tag:checked")).map(c => c.value);
+    if (!title || !body) return alert("Başlık ve mesaj zorunlu.");
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    try {
+        const topicRef = await db.collection("forumTopics").add({
+            categoryId: view.catId, title, tags, locked: false, pinned: false,
+            authorId: currentUserId, authorName: currentUser.name + " (" + currentUser.rank + ")",
+            createdAt: now, lastPostAt: now, replyCount: 0
+        });
+        await db.collection("forumPosts").add({
+            topicId: topicRef.id, authorId: currentUserId,
+            authorName: currentUser.name + " (" + currentUser.rank + ")",
+            body, createdAt: now, isOp: true
+        });
+        await db.collection("forumCategories").doc(view.catId).update({
+            topicCount: firebase.firestore.FieldValue.increment(1)
+        });
+        await audit("topic_create", title);
+        closeModal();
+        toast("Konu açıldı");
+        openTopic(topicRef.id);
+    } catch (e) { alert(e.message); }
+}
+
+/* —— TOPIC —— */
+function openTopic(topicId) {
+    clearUnsub();
+    postPage = 1;
+    view = { page: "topic", topicId, catId: view.catId, catTitle: view.catTitle };
+    document.getElementById("mainView").innerHTML = `
+        <div class="breadcrumb">
+            <a href="#" onclick="goHome();return false;">Forum</a> /
+            <a href="#" onclick="openCategory('${view.catId || ""}');return false;">${esc(view.catTitle || "Kategori")}</a> /
+            <span id="bcTopic">…</span>
+        </div>
+        <div class="page-head">
+            <div>
+                <h2 id="topicTitle">…</h2>
+                <div id="topicMeta" style="margin-top:6px;"></div>
+            </div>
+            <div id="topicActions" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+        <div id="postList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>
+        <div class="pag" id="postPag"></div>
+        <div class="compose panel" id="replyBox">
+            <h3>Yanıt yaz</h3>
+            <div class="bb-toolbar" id="bbReply"></div>
+            <textarea id="replyBody" class="form-control" rows="4" placeholder="BBCode destekli…"></textarea>
+            <div class="upload-zone" onclick="document.getElementById('replyFile').click()">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Foto yükle
+                <input type="file" id="replyFile" accept="image/*" onchange="uploadToField(this,'replyBody')">
+            </div>
+            <button class="btn btn-primary" style="margin-top:10px;" onclick="submitReply()">
+                <i class="fa-solid fa-paper-plane"></i> Gönder
+            </button>
+        </div>`;
+    mountBb("bbReply", "replyBody");
+
+    db.collection("forumTopics").doc(topicId).onSnapshot(s => {
+        if (!s.exists) return goHome();
+        const t = s.data();
+        view.topic = t;
+        view.catId = t.categoryId;
+        document.getElementById("topicTitle").textContent = t.title;
+        document.getElementById("bcTopic").textContent = t.title;
+        document.getElementById("topicMeta").innerHTML =
+            (t.locked ? '<span class="badge locked">KİLİTLİ</span> ' : "") +
+            (t.pinned ? '<span class="badge pinned">PIN</span> ' : "") +
+            (t.tags || []).map(x => `<span class="badge tag">${esc(x)}</span>`).join(" ");
+        const acts = document.getElementById("topicActions");
+        let ah = "";
+        if (isSupervisor() || t.authorId === currentUserId) {
+            ah += `<button class="btn btn-ghost btn-sm" onclick="toggleLock('${topicId}')"><i class="fa-solid fa-lock"></i> ${t.locked ? "Aç" : "Kilitle"}</button>`;
+        }
+        if (isSupervisor()) {
+            ah += `<button class="btn btn-ghost btn-sm" onclick="togglePin('${topicId}')"><i class="fa-solid fa-thumbtack"></i> ${t.pinned ? "Pin kaldır" : "Pin"}</button>`;
+            ah += `<button class="btn btn-danger btn-sm" onclick="deleteTopic('${topicId}')"><i class="fa-solid fa-trash"></i></button>`;
+        }
+        acts.innerHTML = ah;
+        const rb = document.getElementById("replyBox");
+        if (rb) rb.style.display = t.locked ? "none" : "block";
+    });
+
+    unsub = db.collection("forumPosts").where("topicId", "==", topicId).onSnapshot(snap => {
+        allPostsCache = [];
+        snap.forEach(d => allPostsCache.push({ id: d.id, ...d.data() }));
+        allPostsCache.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+        renderPostsPage();
+    });
+}
+
+function renderPostsPage() {
+    const box = document.getElementById("postList");
+    if (!box) return;
+    const total = allPostsCache.length;
+    const pages = Math.max(1, Math.ceil(total / POST_PAGE));
+    if (postPage > pages) postPage = pages;
+    const start = (postPage - 1) * POST_PAGE;
+    const slice = allPostsCache.slice(start, start + POST_PAGE);
+    box.innerHTML = slice.map((p, idx) => {
+        const num = start + idx + 1;
+        const canDel = isSupervisor() || p.authorId === currentUserId;
+        return `<div class="post-card">
+            <div class="post-head">
+                <span><strong style="color:var(--text)">${esc(p.authorName)}</strong>${p.isOp ? ' · <span style="color:var(--purple)">KONU</span>' : ""}</span>
+                <span>#${num} · ${formatDate(p.createdAt)}</span>
+            </div>
+            <div class="post-body">${bbcode(p.body)}</div>
+            <div class="post-actions">
+                <button class="btn btn-ghost btn-sm" onclick="quotePost('${p.id}')"><i class="fa-solid fa-quote-left"></i> Alıntı</button>
+                ${canDel && !p.isOp ? `<button class="btn btn-danger btn-sm" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i></button>` : ""}
+            </div>
+        </div>`;
+    }).join("") || '<div class="empty">Mesaj yok</div>';
+
+    const pag = document.getElementById("postPag");
+    if (pag) {
+        if (total <= POST_PAGE) { pag.innerHTML = ""; return; }
+        let h = "";
+        for (let i = 1; i <= pages; i++) {
+            h += `<button class="${i === postPage ? "active" : ""}" onclick="postPage=${i};renderPostsPage()">${i}</button>`;
+        }
+        pag.innerHTML = h;
+    }
+}
+
+function quotePost(postId) {
+    const p = allPostsCache.find(x => x.id === postId);
+    if (!p) return;
+    const ta = document.getElementById("replyBody");
+    if (!ta) return;
+    const name = (p.authorName || "").split(" (")[0];
+    ta.value = `[quote=${name}]${p.body}[/quote]\n\n` + ta.value;
+    ta.focus();
+}
+
+async function submitReply() {
+    if (view.topic?.locked) return alert("Konu kilitli.");
+    const body = document.getElementById("replyBody").value.trim();
+    if (!body) return alert("Boş mesaj.");
+    const topicId = view.topicId;
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    try {
+        await db.collection("forumPosts").add({
+            topicId, authorId: currentUserId,
+            authorName: currentUser.name + " (" + currentUser.rank + ")",
+            body, createdAt: now, isOp: false
+        });
+        await db.collection("forumTopics").doc(topicId).update({
+            lastPostAt: now, replyCount: firebase.firestore.FieldValue.increment(1)
+        });
+        // bildirim: konu sahibine
+        const t = view.topic;
+        if (t?.authorId) pushNotif(t.authorId, currentUser.name + " konuna yanıt yazdı: " + (t.title || ""), topicId);
+        document.getElementById("replyBody").value = "";
+        toast("Yanıt eklendi");
+    } catch (e) { alert(e.message); }
+}
+
+async function toggleLock(id) {
+    const locked = !view.topic?.locked;
+    await db.collection("forumTopics").doc(id).update({ locked });
+    await audit(locked ? "lock" : "unlock", view.topic?.title);
+    toast(locked ? "Kilitlendi" : "Kilit açıldı");
+}
+async function togglePin(id) {
+    const pinned = !view.topic?.pinned;
+    await db.collection("forumTopics").doc(id).update({ pinned });
+    await audit(pinned ? "pin" : "unpin", view.topic?.title);
+    toast(pinned ? "Pinlendi" : "Pin kalktı");
+}
+async function deleteTopic(id) {
+    if (!confirm("Konu ve tüm yanıtlar silinsin mi?")) return;
+    const posts = await db.collection("forumPosts").where("topicId", "==", id).get();
+    const batch = db.batch();
+    posts.forEach(d => batch.delete(d.ref));
+    batch.delete(db.collection("forumTopics").doc(id));
+    await batch.commit();
+    if (view.catId) {
+        await db.collection("forumCategories").doc(view.catId).update({
+            topicCount: firebase.firestore.FieldValue.increment(-1)
+        });
+    }
+    await audit("topic_delete", view.topic?.title || id);
+    toast("Silindi");
+    openCategory(view.catId);
+}
+async function deletePost(id) {
+    if (!confirm("Yanıt silinsin mi?")) return;
+    await db.collection("forumPosts").doc(id).delete();
+    await db.collection("forumTopics").doc(view.topicId).update({
+        replyCount: firebase.firestore.FieldValue.increment(-1)
+    });
+    await audit("post_delete", id);
+    toast("Yanıt silindi");
+}
+
+/* —— MEMBERS —— */
+function goMembers() {
+    clearUnsub();
+    document.getElementById("mainView").innerHTML = `
+        <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / Üyeler</div>
+        <div class="page-head"><div><h2>Detective &amp; GIT Üyeleri</h2></div></div>
+        <div class="panel" id="memberList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>`;
+    db.collection("users").where("status", "==", "approved").get().then(snap => {
+        const box = document.getElementById("memberList");
+        const members = [];
+        snap.forEach(d => {
+            const u = d.data();
+            if (isAllowedRank(u.rank)) members.push(u);
+        });
+        members.sort((a, b) => (a.rank || "").localeCompare(b.rank || ""));
+        box.innerHTML = members.map(u => `
+            <div class="member-row">
+                <div><strong>${esc(u.name)}</strong> <span style="color:var(--dim)">#${esc(u.badge || "")}</span></div>
+                <span class="badge ${/git/i.test(u.rank) ? "git" : ""}">${esc(u.rank)}</span>
+            </div>`).join("") || '<div class="empty">Üye yok</div>';
+    });
+}
+
+/* —— ADMIN —— */
+function goAdmin() {
+    if (!isSupervisor()) return;
+    clearUnsub();
+    document.getElementById("mainView").innerHTML = `
+        <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / Yönetim</div>
+        <div class="page-head"><div><h2>Yönetim</h2><p>Kategori & audit log</p></div></div>
+        <div class="tabs">
+            <button class="active" onclick="adminTab('cat',this)">Kategoriler</button>
+            <button onclick="adminTab('log',this)">Audit Log</button>
+        </div>
+        <div id="adminBody"></div>`;
+    adminTab("cat");
+}
+function adminTab(which, btn) {
+    if (btn) {
+        document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+    }
+    const body = document.getElementById("adminBody");
+    if (which === "cat") {
+        body.innerHTML = `
+            <div class="panel" style="padding:14px;margin-bottom:12px;">
+                <h3 style="font-size:0.95rem;margin-bottom:10px;">Yeni kategori</h3>
+                <div class="form-group"><label>ID (slug)</label><input id="newCatId" class="form-control" placeholder="ornek-kategori"></div>
+                <div class="form-group"><label>Başlık</label><input id="newCatTitle" class="form-control"></div>
+                <div class="form-group"><label>Açıklama</label><input id="newCatDesc" class="form-control"></div>
+                <button class="btn btn-success btn-sm" onclick="addCategory()">Ekle</button>
+            </div>
+            <div id="adminCats"></div>`;
+        db.collection("forumCategories").orderBy("order").get().then(snap => {
+            const box = document.getElementById("adminCats");
+            let html = "";
+            snap.forEach(d => {
+                const c = d.data();
+                html += `<div class="member-row">
+                    <div><strong>${esc(c.title)}</strong> <span style="color:var(--dim)">${d.id}</span></div>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCategory('${d.id}')">Sil</button>
+                </div>`;
+            });
+            box.innerHTML = html;
+        });
+    } else {
+        body.innerHTML = '<div class="panel" id="auditList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>';
+        db.collection("forumAudit").orderBy("createdAt", "desc").limit(50).get().then(snap => {
+            const box = document.getElementById("auditList");
+            if (snap.empty) { box.innerHTML = '<div class="empty">Log yok</div>'; return; }
+            let html = "";
+            snap.forEach(d => {
+                const l = d.data();
+                html += `<div class="log-row"><strong>${esc(l.action)}</strong> — ${esc(l.detail)} · ${esc(l.by)} · ${formatDate(l.createdAt)}</div>`;
+            });
+            box.innerHTML = html;
+        }).catch(() => {
+            db.collection("forumAudit").limit(50).get().then(snap => {
+                const box = document.getElementById("auditList");
+                const items = [];
+                snap.forEach(d => items.push(d.data()));
+                box.innerHTML = items.map(l =>
+                    `<div class="log-row"><strong>${esc(l.action)}</strong> — ${esc(l.detail)} · ${esc(l.by)}</div>`
+                ).join("") || '<div class="empty">Log yok</div>';
+            });
+        });
+    }
+}
+async function addCategory() {
+    const id = document.getElementById("newCatId").value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const title = document.getElementById("newCatTitle").value.trim();
+    const desc = document.getElementById("newCatDesc").value.trim();
+    if (!id || !title) return alert("ID ve başlık zorunlu.");
+    await db.collection("forumCategories").doc(id).set({
+        title, desc, icon: "fa-folder", gitOnly: false, order: 99, topicCount: 0
+    });
+    await audit("category_add", title);
+    toast("Kategori eklendi");
+    adminTab("cat");
+}
+async function deleteCategory(id) {
+    if (!confirm("Kategori silinsin mi? (konular kalır)")) return;
+    await db.collection("forumCategories").doc(id).delete();
+    await audit("category_delete", id);
+    toast("Silindi");
+    adminTab("cat");
+}
+</script>
+</body>
+</html>
