@@ -244,7 +244,7 @@
     <div class="auth-card">
         <i class="fa-solid fa-user-secret" style="font-size:2rem;color:var(--purple);"></i>
         <h1>Detective Bureau &amp; GND</h1>
-        <p class="sub">Sadece Detective I / II / Supervisor ve GND</p>
+        <p class="sub">Detective rütbesi veya GND / Detective Bureau divizyonu</p>
         <div class="form-group">
             <label>IC İsim (Ad Soyad)</label>
             <input type="text" id="loginName" class="form-control" placeholder="John Doe" autocomplete="username">
@@ -312,7 +312,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-const ALLOWED_RANKS = ["Detective I", "Detective II", "Detective Supervisor", "GND", "Gang & Narcotics Division"];
+const ALLOWED_RANKS = ["Detective I", "Detective II", "Detective Supervisor"];
 const DEFAULT_CATEGORIES = [
     { id: "fraksiyon", title: "Fraksiyon Raporları", desc: "Her yapılanma için konu; yanıtlar alt alta.", icon: "fa-people-group", gnd: false },
     { id: "sahis", title: "Şahıs Takip", desc: "Her şahıs bir konu.", icon: "fa-user-tag", gnd: false },
@@ -425,11 +425,26 @@ function toast(msg) {
     setTimeout(() => el.classList.remove("show"), 2500);
 }
 function isAllowedRank(rank) {
-    if (!rank) return false;
-    const r = rank.trim();
-    if (ALLOWED_RANKS.includes(r)) return true;
-    if (/^detective\s*(i|ii|1|2|supervisor)/i.test(r)) return true;
-    if (/gnd|gang/i.test(r)) return true;
+    return canAccessForum({ rank: rank, division: "" });
+}
+/** Forum erişimi: Detective rütbesi VEYA GND / Detective Bureau divizyonu */
+function canAccessForum(user) {
+    if (!user) return false;
+    if (user.isAdmin) return true;
+    const r = String(user.rank || "").trim().toLowerCase();
+    const d = String(user.division || user.divizyon || user.unit || "").trim().toLowerCase();
+    // Rütbe
+    if (ALLOWED_RANKS.some(x => x.toLowerCase() === r)) return true;
+    if (r.includes("detective")) return true;
+    if (r.includes("lieutenant")) return true;
+    if (r.includes("supervisor") && r.includes("detective")) return true;
+    // Divizyon — GND / Narcotics / Detective Bureau (tire/boşluk fark etmez)
+    const dNorm = d.replace(/[—–−-]/g, " ").replace(/\s+/g, " ");
+    if (dNorm.includes("gnd")) return true;
+    if (dNorm.includes("gang") && dNorm.includes("narcotic")) return true;
+    if (dNorm.includes("narcotic")) return true;
+    if (dNorm.includes("detective") && dNorm.includes("bureau")) return true;
+    if (dNorm.includes("detective bureau")) return true;
     return false;
 }
 function isSupervisor() {
@@ -497,12 +512,13 @@ auth.onAuthStateChanged(async user => {
     document.getElementById("app").classList.add("show");
     document.getElementById("topName").textContent = currentUser.name || "-";
     const rankEl = document.getElementById("topRank");
-    rankEl.textContent = currentUser.rank || "-";
+    rankEl.textContent = (currentUser.rank || "-") + (currentUser.division ? " · " + currentUser.division : "");
+    console.log("[forum] access", canAccessForum(currentUser), currentUser.rank, currentUser.division);
     if (/gnd/i.test(currentUser.rank || "")) rankEl.classList.add("gnd");
-    if (!isAllowedRank(currentUser.rank)) {
+    if (!canAccessForum(currentUser)) {
         document.getElementById("mainView").innerHTML = `
             <div class="denied"><i class="fa-solid fa-lock"></i><h2>Erişim Yok</h2>
-            <p style="color:var(--muted);margin:12px 0;">Sadece Detective I/II/Supervisor ve GND.<br>Rütben: ${esc(currentUser.rank)}</p>
+            <p style="color:var(--muted);margin:12px 0;">Detective rütbesi veya <strong>GND / Detective Bureau</strong> divizyonu gerekli.<br>Rütbe: ${esc(currentUser.rank)} · Divizyon: ${esc(currentUser.division || "—")}</p>
             <button class="btn btn-ghost" onclick="logout()">Çıkış</button></div>`;
         return;
     }
@@ -1102,13 +1118,14 @@ function goMembers() {
         const members = [];
         snap.forEach(d => {
             const u = d.data();
-            if (isAllowedRank(u.rank)) members.push(u);
+            if (canAccessForum(u)) members.push(u);
         });
         members.sort((a, b) => (a.rank || "").localeCompare(b.rank || ""));
         box.innerHTML = members.map(u => `
             <div class="member-row">
-                <div><strong>${esc(u.name)}</strong> <span style="color:var(--dim)">#${esc(u.badge || "")}</span></div>
-                <span class="badge ${/gnd/i.test(u.rank) ? "gnd" : ""}">${esc(u.rank)}</span>
+                <div><strong>${esc(u.name)}</strong> <span style="color:var(--dim)">#${esc(u.badge || "")}</span>
+                <div style="font-size:0.75rem;color:var(--dim);">${esc(u.division || "")}</div></div>
+                <span class="badge ${/gnd|detective bureau/i.test(u.division||"") ? "gnd" : ""}">${esc(u.rank)}</span>
             </div>`).join("") || '<div class="empty">Üye yok</div>';
     });
 }
