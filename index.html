@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSPD — Detective Bureau &amp; GIT Forum</title>
+    <title>LSPD — Detective Bureau &amp; GND Forum</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -80,7 +80,7 @@
             display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
             background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3);
         }
-        .badge.git { background: rgba(249,115,22,0.15); color: var(--orange); border-color: rgba(249,115,22,0.35); }
+        .badge.gnd { background: rgba(249,115,22,0.15); color: var(--orange); border-color: rgba(249,115,22,0.35); }
         .badge.tag { background: rgba(59,130,246,0.12); color: var(--blue); border-color: rgba(59,130,246,0.3); margin: 2px; }
         .badge.locked { background: rgba(239,68,68,0.12); color: var(--red); }
         .badge.pinned { background: rgba(245,158,11,0.15); color: #f59e0b; }
@@ -106,7 +106,7 @@
             width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
             background: rgba(167,139,250,0.12); color: var(--purple); flex-shrink: 0;
         }
-        .cat-card.git .ico { background: rgba(249,115,22,0.12); color: var(--orange); }
+        .cat-card.gnd .ico { background: rgba(249,115,22,0.12); color: var(--orange); }
         .cat-card h3 { font-size: 1rem; margin-bottom: 2px; }
         .cat-card p { font-size: 0.8rem; color: var(--muted); }
         .cat-meta { margin-left: auto; text-align: right; font-size: 0.75rem; color: var(--dim); }
@@ -243,8 +243,8 @@
 <div class="auth-wrap" id="authScreen">
     <div class="auth-card">
         <i class="fa-solid fa-user-secret" style="font-size:2rem;color:var(--purple);"></i>
-        <h1>Detective Bureau &amp; GIT</h1>
-        <p class="sub">Sadece Detective I / II / Supervisor ve GIT</p>
+        <h1>Detective Bureau &amp; GND</h1>
+        <p class="sub">Sadece Detective I / II / Supervisor ve GND</p>
         <div class="form-group">
             <label>IC İsim (Ad Soyad)</label>
             <input type="text" id="loginName" class="form-control" placeholder="John Doe" autocomplete="username">
@@ -312,14 +312,14 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-const ALLOWED_RANKS = ["Detective I", "Detective II", "Detective Supervisor", "GIT", "Gang Investigation Team"];
+const ALLOWED_RANKS = ["Detective I", "Detective II", "Detective Supervisor", "GND", "Gang & Narcotics Division"];
 const DEFAULT_CATEGORIES = [
-    { id: "fraksiyon", title: "Fraksiyon Raporları", desc: "Her yapılanma için konu; yanıtlar alt alta.", icon: "fa-people-group", git: false },
-    { id: "sahis", title: "Şahıs Takip", desc: "Her şahıs bir konu.", icon: "fa-user-tag", git: false },
-    { id: "cinayet", title: "Cinayet / Ağır Suç", desc: "Ağır dosyalar.", icon: "fa-skull", git: false },
-    { id: "fid", title: "FID / Kimlik", desc: "FID notları.", icon: "fa-id-card", git: false },
-    { id: "git", title: "GIT — Gang Investigation", desc: "GIT operasyonları.", icon: "fa-user-ninja", git: true },
-    { id: "genel", title: "Genel / Koordinasyon", desc: "Büro duyuruları.", icon: "fa-comments", git: false }
+    { id: "fraksiyon", title: "Fraksiyon Raporları", desc: "Her yapılanma için konu; yanıtlar alt alta.", icon: "fa-people-group", gnd: false },
+    { id: "sahis", title: "Şahıs Takip", desc: "Her şahıs bir konu.", icon: "fa-user-tag", gnd: false },
+    { id: "cinayet", title: "Cinayet / Ağır Suç", desc: "Ağır dosyalar.", icon: "fa-skull", gnd: false },
+    { id: "fid", title: "FID / Kimlik", desc: "FID notları.", icon: "fa-id-card", gnd: false },
+    { id: "gnd", title: "GND — Gang & Narcotics", desc: "GND operasyonları ve çete dosyaları.", icon: "fa-user-ninja", gnd: true },
+    { id: "genel", title: "Genel / Koordinasyon", desc: "Büro duyuruları.", icon: "fa-comments", gnd: false }
 ];
 const TAGS = ["aktif", "kapalı", "acil", "gizli", "bekliyor"];
 const POST_PAGE = 15;
@@ -429,16 +429,16 @@ function isAllowedRank(rank) {
     const r = rank.trim();
     if (ALLOWED_RANKS.includes(r)) return true;
     if (/^detective\s*(i|ii|1|2|supervisor)/i.test(r)) return true;
-    if (/git|gang\s*investigation/i.test(r)) return true;
+    if (/gnd|gang/i.test(r)) return true;
     return false;
 }
 function isSupervisor() {
     const r = currentUser?.rank || "";
     return /supervisor|lieutenant/i.test(r) || currentUser?.isAdmin;
 }
-function isGitMember() {
+function isGndMember() {
     const r = (currentUser?.rank || "") + " " + (currentUser?.unit || "");
-    return /git|gang\s*investigation|supervisor/i.test(r);
+    return /gnd|gang\s*&?\s*narcotics|supervisor/i.test(r);
 }
 function nameToEmail(name) {
     return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + "@lspd.local";
@@ -498,11 +498,11 @@ auth.onAuthStateChanged(async user => {
     document.getElementById("topName").textContent = currentUser.name || "-";
     const rankEl = document.getElementById("topRank");
     rankEl.textContent = currentUser.rank || "-";
-    if (/git/i.test(currentUser.rank || "")) rankEl.classList.add("git");
+    if (/gnd/i.test(currentUser.rank || "")) rankEl.classList.add("gnd");
     if (!isAllowedRank(currentUser.rank)) {
         document.getElementById("mainView").innerHTML = `
             <div class="denied"><i class="fa-solid fa-lock"></i><h2>Erişim Yok</h2>
-            <p style="color:var(--muted);margin:12px 0;">Sadece Detective I/II/Supervisor ve GIT.<br>Rütben: ${esc(currentUser.rank)}</p>
+            <p style="color:var(--muted);margin:12px 0;">Sadece Detective I/II/Supervisor ve GND.<br>Rütben: ${esc(currentUser.rank)}</p>
             <button class="btn btn-ghost" onclick="logout()">Çıkış</button></div>`;
         return;
     }
@@ -516,7 +516,7 @@ async function ensureCategories() {
     for (const c of DEFAULT_CATEGORIES) {
         const ref = db.collection("forumCategories").doc(c.id);
         if (!(await ref.get()).exists) {
-            await ref.set({ title: c.title, desc: c.desc, icon: c.icon, gitOnly: !!c.git, order: DEFAULT_CATEGORIES.indexOf(c), topicCount: 0 });
+            await ref.set({ title: c.title, desc: c.desc, icon: c.icon, gndOnly: !!c.gnd, order: DEFAULT_CATEGORIES.indexOf(c), topicCount: 0 });
         }
     }
 }
@@ -628,7 +628,7 @@ function goHome() {
     view = { page: "home" };
     document.getElementById("mainView").innerHTML = `
         <div class="page-head">
-            <div><h2>Detective Bureau &amp; GIT</h2><p>Kategori · konu · yanıt · BBCode</p></div>
+            <div><h2>Detective Bureau &amp; GND</h2><p>Kategori · konu · yanıt · BBCode</p></div>
         </div>
         <div class="search-row">
             <input type="text" id="globalSearch" class="form-control" placeholder="Konu ara..." onkeydown="if(event.key==='Enter')doSearch()">
@@ -645,7 +645,7 @@ function goHome() {
         let html = "";
         snap.forEach(doc => {
             const c = doc.data();
-            html += `<div class="cat-card ${c.gitOnly ? "git" : ""}" onclick="openCategory('${doc.id}')">
+            html += `<div class="cat-card ${c.gndOnly ? "gnd" : ""}" onclick="openCategory('${doc.id}')">
                 <div class="ico"><i class="fa-solid ${esc(c.icon || "fa-folder")}"></i></div>
                 <div style="flex:1;min-width:0;"><h3>${esc(c.title)}</h3><p>${esc(c.desc || "")}</p></div>
                 <div class="cat-meta">${c.topicCount || 0} konu</div>
@@ -716,7 +716,10 @@ function openCategory(catId) {
         <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / <span id="bcCat">…</span></div>
         <div class="page-head">
             <div><h2 id="catTitle">…</h2><p id="catDesc"></p></div>
-            <button class="btn btn-success btn-sm" onclick="openNewTopicModal()"><i class="fa-solid fa-plus"></i> Yeni Konu</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm" id="catEditBtn" style="display:none;" onclick="editCategoryModal('${catId}')"><i class="fa-solid fa-pen"></i> Kategori</button>
+                <button class="btn btn-success btn-sm" onclick="openNewTopicModal()"><i class="fa-solid fa-plus"></i> Yeni Konu</button>
+            </div>
         </div>
         <div class="search-row">
             <input type="text" id="catSearch" class="form-control" placeholder="Bu kategoride filtrele..." oninput="filterTopics()">
@@ -729,6 +732,11 @@ function openCategory(catId) {
         document.getElementById("catTitle").textContent = c.title;
         document.getElementById("catDesc").textContent = c.desc || "";
         view.catTitle = c.title;
+        view.catDesc = c.desc || "";
+        if (isSupervisor()) {
+            const b = document.getElementById("catEditBtn");
+            if (b) b.style.display = "inline-flex";
+        }
     });
     view.topicCache = [];
     unsub = db.collection("forumTopics").where("categoryId", "==", catId).onSnapshot(snap => {
@@ -912,6 +920,7 @@ function openTopic(topicId) {
         const acts = document.getElementById("topicActions");
         let ah = "";
         if (isSupervisor() || t.authorId === currentUserId) {
+            ah += `<button class="btn btn-ghost btn-sm" onclick="renameTopicModal('${topicId}')"><i class="fa-solid fa-pen"></i> Başlık</button>`;
             ah += `<button class="btn btn-ghost btn-sm" onclick="toggleLock('${topicId}')"><i class="fa-solid fa-lock"></i> ${t.locked ? "Aç" : "Kilitle"}</button>`;
         }
         if (isSupervisor()) {
@@ -1086,7 +1095,7 @@ function goMembers() {
     clearUnsub();
     document.getElementById("mainView").innerHTML = `
         <div class="breadcrumb"><a href="#" onclick="goHome();return false;">Forum</a> / Üyeler</div>
-        <div class="page-head"><div><h2>Detective &amp; GIT Üyeleri</h2></div></div>
+        <div class="page-head"><div><h2>Detective &amp; GND Üyeleri</h2></div></div>
         <div class="panel" id="memberList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>`;
     db.collection("users").where("status", "==", "approved").get().then(snap => {
         const box = document.getElementById("memberList");
@@ -1099,7 +1108,7 @@ function goMembers() {
         box.innerHTML = members.map(u => `
             <div class="member-row">
                 <div><strong>${esc(u.name)}</strong> <span style="color:var(--dim)">#${esc(u.badge || "")}</span></div>
-                <span class="badge ${/git/i.test(u.rank) ? "git" : ""}">${esc(u.rank)}</span>
+                <span class="badge ${/gnd/i.test(u.rank) ? "gnd" : ""}">${esc(u.rank)}</span>
             </div>`).join("") || '<div class="empty">Üye yok</div>';
     });
 }
@@ -1126,25 +1135,35 @@ function adminTab(which, btn) {
     const body = document.getElementById("adminBody");
     if (which === "cat") {
         body.innerHTML = `
-            <div class="panel" style="padding:14px;margin-bottom:12px;">
-                <h3 style="font-size:0.95rem;margin-bottom:10px;">Yeni kategori</h3>
-                <div class="form-group"><label>ID (slug)</label><input id="newCatId" class="form-control" placeholder="ornek-kategori"></div>
-                <div class="form-group"><label>Başlık</label><input id="newCatTitle" class="form-control"></div>
-                <div class="form-group"><label>Açıklama</label><input id="newCatDesc" class="form-control"></div>
-                <button class="btn btn-success btn-sm" onclick="addCategory()">Ekle</button>
+            <div class="panel" style="padding:16px;margin-bottom:14px;border:1px solid rgba(167,139,250,0.25);">
+                <h3 style="font-size:1rem;margin-bottom:12px;"><i class="fa-solid fa-folder-plus" style="color:var(--purple);"></i> Yeni kategori</h3>
+                <div class="form-group"><label>ID (slug, değişmez)</label><input id="newCatId" class="form-control" placeholder="ornek-kategori"></div>
+                <div class="form-group"><label>Başlık</label><input id="newCatTitle" class="form-control" placeholder="Görünen ad"></div>
+                <div class="form-group"><label>Açıklama</label><input id="newCatDesc" class="form-control" placeholder="Kısa açıklama"></div>
+                <button class="btn btn-success btn-sm" onclick="addCategory()"><i class="fa-solid fa-plus"></i> Ekle</button>
             </div>
+            <p style="font-size:0.8rem;color:var(--dim);margin-bottom:10px;">Mevcut kategoriler — başlık ve açıklamayı düzenleyebilirsin</p>
             <div id="adminCats"></div>`;
         db.collection("forumCategories").orderBy("order").get().then(snap => {
             const box = document.getElementById("adminCats");
             let html = "";
             snap.forEach(d => {
                 const c = d.data();
-                html += `<div class="member-row">
-                    <div><strong>${esc(c.title)}</strong> <span style="color:var(--dim)">${d.id}</span></div>
-                    <button class="btn btn-danger btn-sm" onclick="deleteCategory('${d.id}')">Sil</button>
+                html += `<div class="panel" style="padding:14px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <div>
+                            <span class="badge" style="margin-right:6px;">${d.id}</span>
+                            <strong>${esc(c.title)}</strong>
+                            <div style="font-size:0.8rem;color:var(--dim);margin-top:4px;">${esc(c.desc || "")}</div>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-ghost btn-sm" onclick="editCategoryModal('${d.id}')"><i class="fa-solid fa-pen"></i> Düzenle</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCategory('${d.id}')">Sil</button>
+                        </div>
+                    </div>
                 </div>`;
             });
-            box.innerHTML = html;
+            box.innerHTML = html || '<div class="empty">Kategori yok</div>';
         });
     } else {
         body.innerHTML = '<div class="panel" id="auditList"><div class="empty"><i class="fa-solid fa-spinner fa-spin"></i></div></div>';
@@ -1175,7 +1194,7 @@ async function addCategory() {
     const desc = document.getElementById("newCatDesc").value.trim();
     if (!id || !title) return alert("ID ve başlık zorunlu.");
     await db.collection("forumCategories").doc(id).set({
-        title, desc, icon: "fa-folder", gitOnly: false, order: 99, topicCount: 0
+        title, desc, icon: "fa-folder", gndOnly: false, order: 99, topicCount: 0
     });
     await audit("category_add", title);
     toast("Kategori eklendi");
@@ -1187,6 +1206,65 @@ async function deleteCategory(id) {
     await audit("category_delete", id);
     toast("Silindi");
     adminTab("cat");
+}
+
+function editCategoryModal(catId) {
+    db.collection("forumCategories").doc(catId).get().then(s => {
+        if (!s.exists) return;
+        const c = s.data();
+        document.getElementById("modalBox").innerHTML = `
+            <h3>Kategori düzenle</h3>
+            <p style="font-size:0.8rem;color:var(--dim);margin-bottom:12px;">ID: <code>${esc(catId)}</code> (değişmez)</p>
+            <div class="form-group"><label>Başlık</label>
+                <input type="text" id="editCatTitle" class="form-control" value=""></div>
+            <div class="form-group"><label>Açıklama</label>
+                <textarea id="editCatDesc" class="form-control" rows="3"></textarea></div>
+            <div class="form-group"><label>İkon (Font Awesome class)</label>
+                <input type="text" id="editCatIcon" class="form-control" placeholder="fa-folder"></div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+                <button class="btn btn-success" onclick="saveCategoryEdit('${catId}')">Kaydet</button>
+            </div>`;
+        document.getElementById("modalBg").classList.add("show");
+        document.getElementById("editCatTitle").value = c.title || "";
+        document.getElementById("editCatDesc").value = c.desc || "";
+        document.getElementById("editCatIcon").value = c.icon || "fa-folder";
+    });
+}
+async function saveCategoryEdit(catId) {
+    const title = document.getElementById("editCatTitle").value.trim();
+    const desc = document.getElementById("editCatDesc").value.trim();
+    const icon = document.getElementById("editCatIcon").value.trim() || "fa-folder";
+    if (!title) return alert("Başlık zorunlu.");
+    await db.collection("forumCategories").doc(catId).update({ title, desc, icon });
+    await audit("category_edit", title);
+    closeModal();
+    toast("Kategori güncellendi");
+    if (view.page === "category" && view.catId === catId) openCategory(catId);
+    else if (view.page === "home") goHome();
+    else adminTab("cat");
+}
+
+function renameTopicModal(topicId) {
+    const t = view.topic || {};
+    document.getElementById("modalBox").innerHTML = `
+        <h3>Konu başlığını düzenle</h3>
+        <div class="form-group"><label>Yeni başlık</label>
+            <input type="text" id="editTopicTitle" class="form-control"></div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">İptal</button>
+            <button class="btn btn-success" onclick="saveTopicTitle('${topicId}')">Kaydet</button>
+        </div>`;
+    document.getElementById("modalBg").classList.add("show");
+    document.getElementById("editTopicTitle").value = t.title || "";
+}
+async function saveTopicTitle(topicId) {
+    const title = document.getElementById("editTopicTitle").value.trim();
+    if (!title) return alert("Başlık boş olamaz.");
+    await db.collection("forumTopics").doc(topicId).update({ title });
+    await audit("topic_rename", title);
+    closeModal();
+    toast("Başlık güncellendi");
 }
 </script>
 </body>
